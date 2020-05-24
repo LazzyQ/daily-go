@@ -29,6 +29,7 @@ func main()  {
 		log.Println(v.Value)
 	}
 
-
+  // 最后谈一下list的应用场景
+  // list可以作为queue和 stack 的基础数据结构，list的一个典型应用场景是构造FIFO队列；
 
 }
