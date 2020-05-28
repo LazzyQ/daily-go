@@ -206,6 +206,338 @@ func main()  {
 }
 ```
 
+### http request
+
+http请求在Go中使用Request结构体来表示
+
+```go
+// source : https://golang.org/src/net/http/request.go?s=3252:11812#L97
+type Request struct {
+	Method string
+	URL *url.URL
+	Proto      string // "HTTP/1.0"
+	ProtoMajor int    // 1
+	ProtoMinor int    // 0
+	Header Header
+	Body io.ReadCloser
+	GetBody func() (io.ReadCloser, error)
+	ContentLength int64
+	TransferEncoding []string
+	Close bool
+	Host string
+	Form url.Values
+	PostForm url.Values
+	MultipartForm *multipart.Form
+	Trailer Header
+	RemoteAddr string
+	RequestURI string
+	TLS *tls.ConnectionState
+	Cancel <-chan struct{}
+	Response *Response
+	ctx context.Context
+}
+```
+
+我们从Request中获取很多信息
+
+* Request的Body
+* Query参数
+* http Headers
+* Post表单
+
+```go
+import (
+	"net/http"
+	"strconv"
+)
+
+func main()  {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", requestInspection)
+	http.ListenAndServe(":3000", mux)
+}
+
+func requestInspection(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Method: " + r.Method + "\n"))
+	w.Write([]byte("Protocol Version: " + r.Proto + "\n"))
+	w.Write([]byte("Host: " + r.Host + "\n"))
+	w.Write([]byte("Referer: " + r.Referer() + "\n"))
+	w.Write([]byte("User Agent: " + r.UserAgent() + "\n"))
+	w.Write([]byte("Remote Addr: " + r.RemoteAddr + "\n"))
+	w.Write([]byte("Requested URL: " + r.RequestURI + "\n"))
+	w.Write([]byte("Content Length: " + strconv.FormatInt(r.ContentLength, 10) + "\n"))
+
+	for k, v := range r.URL.Query(){
+		w.Write([]byte("Query string: key=" + k + " value=" + v[0] + "\n"))
+	}
+}
+```
+
+### http response
+
+http response和http request类似，它代表http request的响应。由`Response`结构体定义
+
+```go
+// source : https://golang.org/src/net/http/response.go?s=731:4298#L25
+type Response struct {
+	Status     string // e.g. "200 OK"
+	StatusCode int    // e.g. 200
+	Proto      string // e.g. "HTTP/1.0"
+	ProtoMajor int    // e.g. 1
+	ProtoMinor int    // e.g. 0
+	Header Header
+	Body io.ReadCloser
+	ContentLength int64
+	TransferEncoding []string
+	Close bool
+	Uncompressed bool
+	Trailer Header
+	Request *Request
+	TLS *tls.ConnectionState
+}
+```
+
+我们并不是直接使用`Response`结构体。而是使用`RequestWriter`接口来构建http response。`ResponseWriter`定义如下
+
+```go
+// source : https://golang.org/src/net/http/server.go?s=2985:5848#L84
+type ResponseWriter interface {
+	Header() Header
+	Write([]byte) (int, error)
+	WriteHeader(statusCode int)
+}
+```
+
+> 注意：如果返回的status code不是200，在调用w.Writer()之前必须调用w.WriteHeader()
+
+```go
+import "net/http"
+
+func main()  {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", unauthorized)
+
+	http.ListenAndServe(":3000", mux)
+}
+
+func unauthorized(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte("you do not have permission to access this resource.\n"))
+}
+```
+
+访问结果
+
+```text
+$curl http://localhost:3000/home\?name\=sumit
+you do not have permission to access this resource.
+
+$curl -I http://localhost:3000/home
+HTTP/1.1 401 Unauthorized
+Date: Thu, 28 May 2020 12:53:10 GMT
+Content-Length: 52
+Content-Type: text/plain; charset=utf-8
+```
+
+### http headers
+
+Go定义了`Header`来表示http headers
+
+```go
+type Header map[string][]string
+```
+
+前面我们可以看到在`Request`和`Response`结构体中都有header部分
+
+我们来看一下`Request`中的header
+
+```text
+curl http://localhost:3000
+map[Accept:[*/*] User-Agent:[curl/7.64.1]]
+```
+
+浏览器输出
+
+```text
+map[Accept:[text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9] Accept-Encoding:[gzip, deflate, br] Accept-Language:[zh-CN,zh;q=0.9,en;q=0.8] Connection:[keep-alive] Cookie:[Webstorm-bc417914=9eec914e-fe08-47c9-b0ac-9475c286e9bd; experimentation_subject_id=IjgwMDNjNDVhLTMzZmItNDUyYy1iN2EzLWM0NWJmNmZkYjU2MiI%3D--00c061ec68d8bc350bcc17db6667cce85b374228; sidebar_collapsed=false] Sec-Fetch-Dest:[document] Sec-Fetch-Mode:[navigate] Sec-Fetch-Site:[none] Sec-Fetch-User:[?1] Upgrade-Insecure-Requests:[1] User-Agent:[Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36]]
+```
+
+### 获取header内容
+
+有2种方法从header种获取内容
+
+1.直接使用Header的Get方法，回获取string的结果
+
+```go
+header := r.Header
+accept1 := header.Get("Accept")
+```
+
+2.直接使用map的访问方法获取
+
+```go
+header := r.Header
+accept2 := header["Accept"]
+```
+
+根据不同的需求，我们可以选择不同的方法来处理
+
+### 设置header内容
+
+在构建Response时也可以设置header，我们可以使用`Set`方法
+
+让我们来设置一下Header `ALLOWED`
+
+```go
+import "net/http"
+
+func main()  {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", setHeader)
+	http.ListenAndServe(":3000", mux)
+}
+
+func setHeader(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("ALLOWED",  "GET,POST")
+	w.Write([]byte("set allowed headers\n"))
+}
+```
+
+输出结果
+
+```text
+$curl -i http://localhost:3000
+HTTP/1.1 200 OK
+Allowed: GET,POST
+Date: Thu, 28 May 2020 15:10:56 GMT
+Content-Length: 20
+Content-Type: text/plain; charset=utf-8
+
+set allowed headers
+```
+
+> 注意：不像`ResponseWriter`的`WriteHeader()`方法并不是用来设置`Response`的header，net/http包中对这部分有说明
+
+```go
+// WriteHeader sends an HTTP response header with the provided
+// status code.
+WriteHeader(statusCode int)
+```
+
+### WriteHeader()的使用
+
+`WriteHeader`用来设置http的status code，`Write`方法会在写数据之前调用`WriteHeader(StatusOK)`，如果返回的http status不是200，那么在调用`Write`之前调用`WriteHeader`就很重要了
+
+```go
+if !w.wroteHeader {
+  w.WriteHeader(StatusOK)
+}
+```
+
+正确的用法
+
+```go
+import "net/http"
+
+func main()  {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", setHeader)
+	http.ListenAndServe(":3000", mux)
+}
+
+func setHeader(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("Bad request!\n"))
+}
+```
+
+错误的用户
+
+```go
+import "net/http"
+
+func main()  {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", setHeader)
+	http.ListenAndServe(":3000", mux)
+}
+
+func setHeader(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Bad request!\n")) // 这将会设置status为 200 ok
+	w.WriteHeader(http.StatusBadRequest) // 这里的WriteHeader设置将无效
+}
+```
+
+来看看这样的输出结果，返回的http status仍然是 200 OK
+
+```go
+$curl -i http://localhost:3000
+HTTP/1.1 200 OK
+Date: Thu, 28 May 2020 15:42:01 GMT
+Content-Length: 13
+Content-Type: text/plain; charset=utf-8
+
+Bad request!
+```
+
+### 查询字符串
+
+从request中获取查询字符串是最常见的一种场景
+
+在`Request`中有`URL`字段
+
+```go
+type Request struct {
+  // other field omitted
+  URL *url.URL
+}
+```
+
+`URL`有自己的方法获取查询字符串
+
+```go
+type URL struct {
+  // fields omitted
+  RawQuery   string    // encoded query values, without '?'
+}
+
+// Query parses RawQuery and returns the corresponding values.
+// It silently discards malformed value pairs.
+// To check errors use ParseQuery.
+func (u *URL) Query() Values {
+	v, _ := ParseQuery(u.RawQuery)
+	return v
+}
+```
+
+可以调用这个`Query()`方法获取查询字符串
+
+```go
+import "net/http"
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", showQuery)
+	http.ListenAndServe(":3000", mux)
+}
+
+func showQuery(w http.ResponseWriter, r *http.Request) {
+	queryString := r.URL.Query()
+	w.Write([]byte("query strings are\n"))
+	w.Write([]byte("Name:" + queryString.Get("name") + "\n"))
+	w.Write([]byte("Email:" + queryString.Get("email") + "\n"))
+}
+```
+
+查询结果
+
+```text
+curl -G -d 'name=test' -d 'email=test@gmail.com' localhost:3000
+query strings are
+Name:test
+Email:test@gmail.com
+```
+
 
 
 
