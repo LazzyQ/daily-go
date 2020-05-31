@@ -538,6 +538,193 @@ Name:test
 Email:test@gmail.com
 ```
 
+### 使用cookies
 
+因为http是无状态的，所以有多种方案来维持请求之间的数据，其中一种就是cookie。
+
+> HTTP Cookie（也叫Web Cookie或浏览器Cookie）是服务器发送到用户浏览器并保存在本地的一小块数据，它会在浏览器下次向同一服务器再发起请求时被携带并发送到服务器上。通常，它用于告知服务端两个请求是否来自同一浏览器，如保持用户的登录状态。Cookie使基于无状态的HTTP协议记录稳定的状态信息成为了可能。 --- MDN web docs
+
+`net/http`包中定义的cookie结构如下
+
+```go
+// source : https://github.com/golang/go/blob/go1.13.7/src/net/http/cookie.go#L19
+type Cookie struct {
+	Name  string
+	Value string
+
+	Path       string    // optional
+	Domain     string    // optional
+	Expires    time.Time // optional
+	RawExpires string    // for reading cookies only
+
+	// MaxAge=0 means no 'Max-Age' attribute specified.
+	// MaxAge<0 means delete cookie now, equivalently 'Max-Age: 0'
+	// MaxAge>0 means Max-Age attribute present and given in seconds
+	MaxAge   int
+	Secure   bool
+	HttpOnly bool
+	SameSite SameSite
+	Raw      string
+	Unparsed []string // Raw text of unparsed attribute-value pairs
+}
+```
+
+### 设置cookie
+
+为了设置cookie，服务器需要发送`Set-Cookie`header。浏览器会根据header来创建cookie。Go提供了`SetCookie`函数来设置cookie，这个函数需要`ResponseWriter`和`Cookie`参数
+
+```go
+//source : https://golang.org/src/net/http/cookie.go?s=3954:4002#L150
+// SetCookie adds a Set-Cookie header to the provided ResponseWriter's headers.
+// The provided cookie must have a valid Name. Invalid cookies may be
+// silently dropped.
+func SetCookie(w ResponseWriter, cookie *Cookie) {
+	if v := cookie.String(); v != "" {
+		w.Header().Add("Set-Cookie", v)
+	}
+}
+```
+
+尝试设置一下
+
+```go
+import "net/http"
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", setCookies)
+	http.ListenAndServe(":3000", mux)
+}
+
+func setCookies(w http.ResponseWriter, r *http.Request) {
+	cookie := http.Cookie{
+		Name: "cookie-1",
+		Value: "hello world",
+	}
+	http.SetCookie(w, &cookie)
+}
+```
+
+请求一下
+
+```text
+$curl -i http://localhost:3000
+HTTP/1.1 200 OK
+Set-Cookie: cookie-1="hello world"
+Date: Sun, 31 May 2020 12:43:17 GMT
+Content-Length: 0
+```
+
+### 获取Cookie
+
+如果之前的请求设置了cookie，浏览器会将cookie再发送回server。`Request`有`Cookies()`方法来获取请求中的cookies。
+
+```go
+// source : https://github.com/golang/go/blob/go1.13.7/src/net/http/request.go#L408
+// Cookies parses and returns the HTTP cookies sent with the request.
+func (r *Request) Cookies() []*Cookie {
+	return readCookies(r.Header, "")
+}
+```
+
+除此之外还可以使用`Cookie`方法通过name来获取单个cookie。
+
+```go
+//source : https://github.com/golang/go/blob/go1.13.7/src/net/http/request.go#L419
+// Cookie returns the named cookie provided in the request or
+// ErrNoCookie if not found.
+// If multiple cookies match the given name, only one cookie will
+// be returned.
+func (r *Request) Cookie(name string) (*Cookie, error) {
+	for _, c := range readCookies(r.Header, name) {
+		return c, nil
+	}
+	return nil, ErrNoCookie
+}
+```
+
+看看获取cookie的方式
+
+```go
+import (
+	"fmt"
+	"net/http"
+)
+
+func main()  {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", getCookies)
+	http.ListenAndServe(":3000", mux)
+}
+
+func getCookies(w http.ResponseWriter, r *http.Request) {
+	cookies := r.Cookies()
+	for _, cookie := range cookies{
+		fmt.Fprintln(w, cookie)
+	}
+
+	cookie, err := r.Cookie("cookie-1")
+	if err != nil {
+		fmt.Fprintln(w, err.Error())
+	}
+	fmt.Fprintln(w, cookie)
+}
+```
+
+执行一下
+
+```text
+$curl -b 'cookie-1=hello' http://localhost:3000
+cookie-1=hello
+cookie-1=hello
+```
+
+### 使用Sessions
+
+Session是另外一种持久化数据的技术。Sessions常常是将状态存储在服务端，和cookie将状态存储在浏览器相反。因为cookie存储在用户的浏览器中，它们通常用于增强用户体验。
+
+另一方面，session在服务端进行管理，所有我们有更多的控制权和安全性。Session广泛用于敏感信息，例如用户是否已登录系统。
+
+Session通常自己实现很困难，我们经常使用一些第三方的session管理包
+
+### 获取和设置session数据
+
+使用`github.com/gorilla/sessions`来管理session
+
+这里使用CookieStore来存储session数据，也可以使用文件系统或数据库等
+
+```go
+import (
+	"fmt"
+	"github.com/gorilla/sessions"
+	"net/http"
+)
+
+// for prod use secure key, not hard-coded
+var store = sessions.NewCookieStore([]byte("1234"))
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", sessionHandler)
+	http.ListenAndServe(":3000", mux)
+}
+
+func sessionHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := store.Get(r, "custom-session")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	val := session.Values["hello"]
+	if val != nil {
+		fmt.Fprintln(w, "retrieving existing session: ")
+		fmt.Fprintln(w, val)
+		return
+	}
+	session.Values["hello"] = "world"
+	session.Save(r, w)
+	fmt.Fprintln(w, "no existing session found, set value for session")
+}
+```
 
 
