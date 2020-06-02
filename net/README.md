@@ -793,4 +793,3 @@ $go run client1.go
 本文demo代码在[这里](https://github.com/bigwhite/experiments/tree/master/go-tcpsock)可以找到。
 
 转载自[原文](https://tonybai.com/2015/11/17/tcp-programming-in-golang/)
-
