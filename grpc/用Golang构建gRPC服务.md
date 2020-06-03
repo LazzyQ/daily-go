@@ -131,3 +131,356 @@ pb.go文件里面包含：
 * 一个客户端存根用来让客户端调用RouteGuide服务中定义的方法。
 * 一个需要服务端实现的接口类型RouteGuideServer，接口类型中包含了RouteGuide服务中定义的所有方法。
 
+#### 创建gRPC服务端
+
+首先让我们看一下怎么创建RouteGuide服务器。有两种方法来让我们的RouteGuide服务工作：
+
+* 实现我们从服务定义生成的服务接口：做服务实际要做的事情。
+* 运行一个gRPC服务器监听客户端的请求然后把请求派发给正确的服务实现。
+
+你可以在刚才安装的gPRC包的`grpc-go/examples/route_guide/server/server.go`找到我们示例中RouteGuide`服务的实现代码。下面让我们看看他是怎么工作的。
+
+##### 实现RouteGuide
+
+如你所见，实现代码中有一个routeGuideServer结构体类型，它实现了`protoc`编译器生成的pb.go文件中定义的`RouteGuideServer`接口。
+
+```go
+type routeGuideServer struct {
+        ...
+}
+...
+
+func (s *routeGuideServer) GetFeature(ctx context.Context, point *pb.Point) (*pb.Feature, error) {
+        ...
+}
+...
+
+func (s *routeGuideServer) ListFeatures(rect *pb.Rectangle, stream pb.RouteGuide_ListFeaturesServer) error {
+        ...
+}
+...
+
+func (s *routeGuideServer) RecordRoute(stream pb.RouteGuide_RecordRouteServer) error {
+        ...
+}
+...
+
+func (s *routeGuideServer) RouteChat(stream pb.RouteGuide_RouteChatServer) error {
+        ...
+}
+...
+```
+
+##### 普通PRC
+
+routeGuideServer实现我们所有的服务方法。首先，让我们看一下最简单的类型GetFeature，它只是从客户端获取一个Point，并从其Feature数据库中返回相应的Feature信息。
+
+```go
+func (s *routeGuideServer) GetFeature(ctx context.Context, point *pb.Point) (*pb.Feature, error) {
+	for _, feature := range s.savedFeatures {
+		if proto.Equal(feature.Location, point) {
+			return feature, nil
+		}
+	}
+	// No feature was found, return an unnamed feature
+	return &pb.Feature{"", point}, nil
+}
+```
+
+这个方法传递了RPC上下文对象和客户端的Point protocol buffer请求消息，它在响应信息中返回一个Feature类型的protocol buffer消息和错误。在该方法中，我们使用适当的信息填充Feature，然后将其返回并返回nil错误，以告知gRPC我们已经完成了RPC的处理，并且可以将`Feature返回给客户端。
+
+##### 服务端流式RPC
+
+现在，让我们看一下服务方法中的一个流式RPC。 ListFeatures是服务器端流式RPC，因此我们需要将多个Feature发送回客户端。
+
+```go
+func (s *routeGuideServer) ListFeatures(rect *pb.Rectangle, stream pb.RouteGuide_ListFeaturesServer) error {
+	for _, feature := range s.savedFeatures {
+		if inRange(feature.Location, rect) {
+			if err := stream.Send(feature); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+```
+
+如你所见，这次我们没有获得简单的请求和响应对象，而是获得了一个请求对象（客户端要在其中查找Feature的Rectangle）和一个特殊的RouteGuide_ListFeaturesServer对象来写入响应。
+
+在该方法中，我们填充了需要返回的所有Feature对象，并使用Send()方法将它们写入RouteGuide_ListFeaturesServer。最后，就像在简单的RPC中一样，我们返回nil错误来告诉gRPC我们已经完成了响应的写入。如果此调用中发生任何错误，我们将返回非nil错误； gRPC层会将其转换为适当的RPC状态，以在线上发送。
+
+##### 客户端流式RPC
+
+现在，让我们看一些更复杂的事情：客户端流方法RecordRoute，从客户端获取点流，并返回一个包含行程信息的RouteSummary。如你所见，这一次该方法根本没有request参数。相反，它获得一个RouteGuide_RecordRouteServer流，服务器可以使用该流来读取和写入消息-它可以使用Recv()方法接收客户端消息，并使用SendAndClose()方法返回其单个响应。
+
+```go
+func (s *routeGuideServer) RecordRoute(stream pb.RouteGuide_RecordRouteServer) error {
+	var pointCount, featureCount, distance int32
+	var lastPoint *pb.Point
+	startTime := time.Now()
+	for {
+		point, err := stream.Recv()
+		if err == io.EOF {
+			endTime := time.Now()
+			return stream.SendAndClose(&pb.RouteSummary{
+				PointCount:   pointCount,
+				FeatureCount: featureCount,
+				Distance:     distance,
+				ElapsedTime:  int32(endTime.Sub(startTime).Seconds()),
+			})
+		}
+		if err != nil {
+			return err
+		}
+		pointCount++
+		for _, feature := range s.savedFeatures {
+			if proto.Equal(feature.Location, point) {
+				featureCount++
+			}
+		}
+		if lastPoint != nil {
+			distance += calcDistance(lastPoint, point)
+		}
+		lastPoint = point
+	}
+}
+```
+
+在方法主体中，我们使用RouteGuide_RecordRouteServer的Recv()方法不停地读取客户端的请求到一个请求对象中（在本例中为Point），直到没有更多消息为止：服务器需要要在每次调用后检查从Recv()返回的错误。如果为nil，则流仍然良好，并且可以继续读取；如果是io.EOF，则表示消息流已结束，服务器可以返回其RouteSummary。如果错误为其他值，我们将返回错误“原样”，以便gRPC层将其转换为RPC状态。
+
+##### 双向流式RPC
+
+最后让我们看一下双向流式RPC方法RouteChat()
+
+```go
+func (s *routeGuideServer) RouteChat(stream pb.RouteGuide_RouteChatServer) error {
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		key := serialize(in.Location)
+
+		s.mu.Lock()
+		s.routeNotes[key] = append(s.routeNotes[key], in)
+		// Note: this copy prevents blocking other clients while serving this one.
+		// We don't need to do a deep copy, because elements in the slice are
+		// insert-only and never modified.
+		rn := make([]*pb.RouteNote, len(s.routeNotes[key]))
+		copy(rn, s.routeNotes[key])
+		s.mu.Unlock()
+
+		for _, note := range rn {
+			if err := stream.Send(note); err != nil {
+				return err
+			}
+		}
+	}
+}
+```
+
+这次，我们得到一个RouteGuide_RouteChatServer流，就像在客户端流示例中一样，该流可用于读取和写入消息。但是，这次，当客户端仍在向其消息流中写入消息时，我们会向流中写入要返回的消息。
+
+此处的读写语法与我们的客户端流式传输方法非常相似，不同之处在于服务器使用流的Send()方法而不是SendAndClose()，因为服务器会写入多个响应。尽管双方总是会按照对方的写入顺序来获取对方的消息，但是客户端和服务器都可以以任意顺序进行读取和写入-流完全独立地运行（意思是服务器可以接受完请求后再写流，也可以接收一条请求写一条响应。同样的客户端可以写完请求了再读响应，也可以发一条请求读一条响应）
+
+##### 启动服务器
+
+一旦实现了所有方法，我们还需要启动gRPC服务器，以便客户端可以实际使用我们的服务。以下代码段显示了如何启动RouteGuide服务。
+
+```go
+flag.Parse()
+lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+if err != nil {
+        log.Fatalf("failed to listen: %v", err)
+}
+grpcServer := grpc.NewServer()
+pb.RegisterRouteGuideServer(grpcServer, &routeGuideServer{})
+... // determine whether to use TLS
+grpcServer.Serve(lis)
+```
+
+为了构建和启动服务器我们需要：
+
+* 指定要监听客户端请求的端口lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))。
+* 使用grpc.NewServer()创建一个gRPC server的实例。
+* 使用gRPC server注册我们的服务实现。
+* 使用我们的端口详细信息在服务器上调用Serve()进行阻塞等待，直到进程被杀死或调用Stop()为止。
+
+#### 创建客户端
+
+在这一部分中我们将为RouteGuide服务创建Go客户端，你可以在grpc-go/examples/route_guide/client/client.go 看到完整的客户端代码。
+
+##### 创建客户端存根
+
+要调用服务的方法，我们首先需要创建一个gRPC通道与服务器通信。我们通过把服务器地址和端口号传递给grpc.Dial()来创建通道，像下面这样：
+
+```go
+conn, err := grpc.Dial(*serverAddr)
+if err != nil {
+    ...
+}
+defer conn.Close()
+```
+
+如果你请求的服务需要认证，你可以在grpc.Dial中使用DialOptions设置认证凭证（比如：TLS，GCE凭证，JWT凭证）--不过我们的RouteGuide服务不需要这些。
+
+设置gRPC通道后，我们需要一个客户端存根来执行RPC。我们使用从.proto生成的pb包中提供的NewRouteGuideClient方法获取客户端存根。
+
+```go
+client := pb.NewRouteGuideClient(conn)
+```
+
+生成的pb.go文件定义了客户端接口类型RouteGuideClient并用客户端存根的结构体类型实现了接口中的方法，所以通过上面获取到的客户端存根client可以直接调用下面接口类型中列出的方法。
+
+```go
+type RouteGuideClient interface {
+	GetFeature(ctx context.Context, in *Point, opts ...grpc.CallOption) (*Feature, error)
+
+	ListFeatures(ctx context.Context, in *Rectangle, opts ...grpc.CallOption) (RouteGuide_ListFeaturesClient, error)
+
+	RecordRoute(ctx context.Context, opts ...grpc.CallOption) (RouteGuide_RecordRouteClient, error)
+	RouteChat(ctx context.Context, opts ...grpc.CallOption) (RouteGuide_RouteChatClient, error)
+}
+```
+
+每个实现方法会再去请求gRPC服务端相对应的方法获取服务端的响应，比如：
+
+```go
+func (c *routeGuideClient) GetFeature(ctx context.Context, in *Point, opts ...grpc.CallOption) (*Feature, error) {
+	out := new(Feature)
+	err := c.cc.Invoke(ctx, "/routeguide.RouteGuide/GetFeature", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+```
+
+RouteGuideClient接口的完整实现可以在生成的pb.go文件里找到。
+
+#### 调用服务的方法
+
+现在让我们看看如何调用服务的方法。注意在gRPC-Go中，PRC是在阻塞/同步模式下的运行的，也就是说RPC调用会等待服务端响应，服务端将返回响应或者是错误。
+
+##### 普通RPC
+
+调用普通RPC方法GetFeature如同直接调用本地的方法。
+
+```go
+feature, err := client.GetFeature(context.Background(), &pb.Point{409146138, -746188906})
+if err != nil {
+        ...
+}
+```
+
+如你所见，我们在之前获得的存根上调用该方法。在我们的方法参数中，我们创建并填充一个protocol buffer对象（在本例中为Point对象）。我们还会传递一个context.Context对象，该对象可让我们在必要时更改RPC的行为，例如超时/取消正在调用的RPC（cancel an RPC in flight）。如果调用没有返回错误，则我们可以从第一个返回值中读取服务器的响应信息。
+
+
+##### 服务端流式RPC
+
+这里我们会调用服务端流式方法ListFeatures，方法返回的流中包含了地理特征信息。如果你读过上面的创建客户端的章节，这里有些东西看起来会很熟悉--流式RPC在两端实现的方式很类似。
+
+```go
+rect := &pb.Rectangle{ ... }  // initialize a pb.Rectangle
+stream, err := client.ListFeatures(context.Background(), rect)
+if err != nil {
+    ...
+}
+for {
+    feature, err := stream.Recv()
+    if err == io.EOF {
+        break
+    }
+    if err != nil {
+        log.Fatalf("%v.ListFeatures(_) = _, %v", client, err)
+    }
+    log.Println(feature)
+}
+```
+
+和简单RPC调用一样，调用时传递了一个方法的上下文和一个请求。但是我们取回的是一个RouteGuide_ListFeaturesClient实例而不是一个响应对象。客户端可以使用RouteGuide_ListFeaturesClient流读取服务器的响应。
+
+我们使用RouteGuide_ListFeaturesClient的Recv()方法不停地将服务器的响应读入到一个protocol buffer响应对象中（本例中的Feature对象），直到没有更多消息为止：客户端需要在每次调用后检查从Recv()返回的错误err。如果为nil，则流仍然良好，并且可以继续读取；如果是io.EOF，则消息流已结束；否则就是一定RPC错误，该错误会通过err传递给调用程序。
+
+##### 客户端流式RPC
+
+客户端流方法RecordRoute与服务器端方法相似，不同之处在于，我们仅向该方法传递一个上下文并获得一个RouteGuide_RecordRouteClient流，该流可用于写入和读取消息。
+
+```go
+// 随机的创建一些Points
+r := rand.New(rand.NewSource(time.Now().UnixNano()))
+pointCount := int(r.Int31n(100)) + 2 // Traverse at least two points
+var points []*pb.Point
+for i := 0; i < pointCount; i++ {
+	points = append(points, randomPoint(r))
+}
+log.Printf("Traversing %d points.", len(points))
+stream, err := client.RecordRoute(context.Background())// 调用服务中定义的客户端流式RPC方法
+if err != nil {
+	log.Fatalf("%v.RecordRoute(_) = _, %v", client, err)
+}
+for _, point := range points {
+	if err := stream.Send(point); err != nil {// 向流中写入多个请求消息
+		if err == io.EOF {
+			break
+		}
+		log.Fatalf("%v.Send(%v) = %v", stream, point, err)
+	}
+}
+reply, err := stream.CloseAndRecv()// 从流中取回服务器的响应
+if err != nil {
+	log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+}
+log.Printf("Route summary: %v", reply)
+```
+
+RouteGuide_RecordRouteClient有一个Send()。我们可以使用它发送请求给服务端。一旦我们使用Send()写入流完成后，我们需要在流上调用CloseAndRecv()方法让gRPC知道我们已经完成了请求的写入并且期望得到一个响应。我们从CloseAndRecv()方法返回的err中可以获得RPC状态。如果状态是nil,CloseAndRecv()`的第一个返回值就是一个有效的服务器响应。
+
+##### 双向流式RPC
+
+最后，让我们看一下双向流式RPC RouteChat()。与RecordRoute一样，我们只向方法传递一个上下文对象，然后获取一个可用于写入和读取消息的流。但是，这一次我们在服务器仍将消息写入消息流的同时，通过方法的流返回值。
+
+```go
+stream, err := client.RouteChat(context.Background())
+waitc := make(chan struct{})
+go func() {
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			// read done.
+			close(waitc)
+			return
+		}
+		if err != nil {
+			log.Fatalf("Failed to receive a note : %v", err)
+		}
+		log.Printf("Got message %s at point(%d, %d)", in.Message, in.Location.Latitude, in.Location.Longitude)
+	}
+}()
+for _, note := range notes {
+	if err := stream.Send(note); err != nil {
+		log.Fatalf("Failed to send a note: %v", err)
+	}
+}
+stream.CloseSend()
+<-waitc
+```
+
+除了在完成调用后使用流的CloseSend()方法外，此处的读写语法与我们的客户端流方法非常相似。尽管双方总是会按照对方的写入顺序来获取对方的消息，但是客户端和服务器都可以以任意顺序进行读取和写入-两端的流完全独立地运行。
+
+####  启动应用
+
+要编译和运行服务器，假设你位于/route_guide文件夹中，只需：
+```shell script
+$ go run server/server.go
+```
+
+复制代码同样，运行客户端：
+
+```shell script
+$ go run client/client.go
+```
