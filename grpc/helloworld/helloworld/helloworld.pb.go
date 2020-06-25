@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.24.0
 // 	protoc        v3.11.4
-// source: helloworld.proto
+// source: helloworld1.proto
 
 package helloworld
 
@@ -154,12 +154,12 @@ func file_helloworld_proto_rawDescGZIP() []byte {
 
 var file_helloworld_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_helloworld_proto_goTypes = []interface{}{
-	(*HelloRequest)(nil), // 0: helloworld.HelloRequest
-	(*HelloReply)(nil),   // 1: helloworld.HelloReply
+	(*HelloRequest)(nil), // 0: helloworld1.HelloRequest
+	(*HelloReply)(nil),   // 1: helloworld1.HelloReply
 }
 var file_helloworld_proto_depIdxs = []int32{
-	0, // 0: helloworld.Greeter.SayHello:input_type -> helloworld.HelloRequest
-	1, // 1: helloworld.Greeter.SayHello:output_type -> helloworld.HelloReply
+	0, // 0: helloworld1.Greeter.SayHello:input_type -> helloworld1.HelloRequest
+	1, // 1: helloworld1.Greeter.SayHello:output_type -> helloworld1.HelloReply
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -243,7 +243,7 @@ func NewGreeterClient(cc grpc.ClientConnInterface) GreeterClient {
 
 func (c *greeterClient) SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error) {
 	out := new(HelloReply)
-	err := c.cc.Invoke(ctx, "/helloworld.Greeter/SayHello", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/helloworld1.Greeter/SayHello", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func _Greeter_SayHello_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/helloworld.Greeter/SayHello",
+		FullMethod: "/helloworld1.Greeter/SayHello",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GreeterServer).SayHello(ctx, req.(*HelloRequest))
@@ -286,7 +286,7 @@ func _Greeter_SayHello_Handler(srv interface{}, ctx context.Context, dec func(in
 }
 
 var _Greeter_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "helloworld.Greeter",
+	ServiceName: "helloworld1.Greeter",
 	HandlerType: (*GreeterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -295,5 +295,5 @@ var _Greeter_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "helloworld.proto",
+	Metadata: "helloworld1.proto",
 }
