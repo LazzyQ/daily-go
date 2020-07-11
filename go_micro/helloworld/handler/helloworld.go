@@ -2,10 +2,8 @@ package handler
 
 import (
 	"context"
-
+	helloworld "github.com/LazzyQ/daily-go/go_micro/helloworld/proto/helloworld"
 	log "github.com/micro/go-micro/v2/logger"
-
-	helloworld "helloworld/proto/helloworld"
 )
 
 type Helloworld struct{}
