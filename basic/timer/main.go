@@ -7,7 +7,7 @@ import (
 
 func main() {
 	// 初始化2s的ticker
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 
 	for t := range ticker.C {
 		// 每2s执行一次
