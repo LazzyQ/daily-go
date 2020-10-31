@@ -45,7 +45,7 @@ func main() {
 			Value string `json:"value" binding:"required"`
 		}
 
-		if c.Bind(&json) == nil {
+		if c.ShouldBind(&json) == nil {
 			db[user] = json.Value
 			c.JSON(http.StatusOK, gin.H{"status": "ok", "json": json})
 		}

@@ -53,6 +53,10 @@ func main() {
 				},
 			},
 		},
+		Action: func(c *cli.Context) error {
+			fmt.Println("action ...")
+			return nil
+		},
 	}
 
 	err := app.Run(os.Args)

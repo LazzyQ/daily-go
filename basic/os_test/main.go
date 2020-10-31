@@ -11,18 +11,4 @@ func main()  {
 	fmt.Println(executable)
 	fmt.Println(filepath.Split(executable))
 
-
-	var m  map[string]interface{}
-
-	var (
-		a int
-		ok bool
-	)
-
-	fmt.Println(m["name"])
-
-	if a, ok = m["name"].(int);  ok {
-		fmt.Println("ok")
-	}
-	fmt.Println(a)
 }
