@@ -11,7 +11,7 @@ import (
 	"math/rand"
 	"time"
 
-	pb  "github.com/LazzyQ/daily-go/grpc/route_guide/routeguide"
+	pb "github.com/zengqiang96/daily-go/grpc/route_guide/routeguide"
 )
 
 var (
@@ -20,7 +20,6 @@ var (
 	serverAddr         = flag.String("server_addr", "localhost:10000", "The server address in the format of host:port")
 	serverHostOverride = flag.String("server_host_override", "x.test.youtube.com", "The server name use to verify the hostname returned by TLS handshake")
 )
-
 
 // printFeature gets the feature for the given point.
 func printFeature(client pb.RouteGuideClient, point *pb.Point) {

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	pb "github.com/LazzyQ/daily-go/grpc/route_guide/routeguide"
 	"github.com/golang/protobuf/proto"
+	pb "github.com/zengqiang96/daily-go/grpc/route_guide/routeguide"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/testdata"
@@ -158,8 +158,8 @@ func calcDistance(p1 *pb.Point, p2 *pb.Point) int32 {
 	dlng := lng2 - lng1
 
 	a := math.Sin(dlat/2)*math.Sin(dlat/2) +
-			math.Cos(lat1)*math.Cos(lat2)*
-					math.Sin(dlng/2)*math.Sin(dlng/2)
+		math.Cos(lat1)*math.Cos(lat2)*
+			math.Sin(dlng/2)*math.Sin(dlng/2)
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 
 	distance := R * c
@@ -173,9 +173,9 @@ func inRange(point *pb.Point, rect *pb.Rectangle) bool {
 	bottom := math.Min(float64(rect.Lo.Latitude), float64(rect.Hi.Latitude))
 
 	if float64(point.Longitude) >= left &&
-			float64(point.Longitude) <= right &&
-			float64(point.Latitude) >= bottom &&
-			float64(point.Latitude) <= top {
+		float64(point.Longitude) <= right &&
+		float64(point.Latitude) >= bottom &&
+		float64(point.Latitude) <= top {
 		return true
 	}
 	return false

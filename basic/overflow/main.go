@@ -8,7 +8,6 @@ import (
 func main()  {
 	dir, _ := os.UserConfigDir()
 	fmt.Println(dir)
-
 }
 
 

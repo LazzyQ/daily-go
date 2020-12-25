@@ -1,0 +1,45 @@
+package imap
+
+import (
+	"fmt"
+	"sync"
+	"testing"
+	"time"
+)
+
+type Compose struct {
+	Num int
+}
+
+func TestMapKey(t *testing.T) {
+
+	a := &Compose{Num: 1}
+	b := &Compose{Num: 1}
+
+	m := make(map[*Compose]string)
+
+	m[a] = "a"
+	m[b] = "b"
+
+	t.Log(len(m))
+}
+
+func TestConcurrentMapReadWrite(t *testing.T) {
+	m := make(map[string]string)
+
+	m["s"] = "s"
+	for {
+		if v, ok := m["s"]; ok {
+			fmt.Println(v)
+		} else {
+			fmt.Println("==")
+		}
+	}
+}
+
+func MapWrite(m *sync.Map) {
+	for {
+		m.Store("s", "s")
+		time.Sleep(time.Millisecond)
+	}
+}

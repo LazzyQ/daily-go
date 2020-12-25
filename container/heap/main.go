@@ -1,7 +1,5 @@
 package main
 
-import "container/heap"
-
 func main()  {
 
 	// heap包提供了堆相关的操作，并不想list和ring一样提供New()的创建方法
@@ -12,7 +10,7 @@ func main()  {
 	//	Pop() interface{}   // remove and return element Len() - 1.
 	//}
 
-	heap.Fix()
+	// heap.Fix()
 
 	// 应用场景
 	// heap可以用来排序。游戏编程中是一种高效的定时器实现方案
