@@ -3,7 +3,6 @@ module github.com/zengqiang96/daily-go
 go 1.14
 
 require (
-	github.com/ClickHouse/clickhouse-go v1.4.3
 	github.com/apache/pulsar-client-go v0.3.0
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-kit/kit v0.10.0
