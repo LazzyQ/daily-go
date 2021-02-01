@@ -5,6 +5,11 @@ import (
 	"unsafe"
 )
 
+type Student struct {
+	Name string
+	Age  int
+}
+
 func TestSlice(t *testing.T) {
 	s := make([]byte, 128)
 	t.Logf("len: %d, cap: %d", len(s), cap(s))
@@ -29,4 +34,25 @@ func TestSlice(t *testing.T) {
 	b2 := unsafe.Pointer(&s2)
 
 	t.Logf("%v, %v, %v", *(*int)(b), *(*int)(b1), *(*int)(b2))
+}
+
+func TestSliceStructChange(t *testing.T) {
+	students := make([]Student, 0, 2)
+
+	students = append(students, Student{Name: "x", Age: 1}, Student{Name: "y", Age: 2})
+
+	// changeStudents(students)
+	// t.Log(students) // [{x 100} {y 200}]
+
+	copyStudents := make([]Student, 0, len(students))
+	copyStudents = append(copyStudents, students...)
+
+	changeStudents(copyStudents)
+	t.Log(students)
+	t.Log(copyStudents)
+}
+
+func changeStudents(students []Student) {
+	students[0].Age = 100
+	students[1].Age = 200
 }

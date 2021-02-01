@@ -1,6 +1,7 @@
 package str
 
 import (
+	"strings"
 	"testing"
 	"unsafe"
 )
@@ -13,6 +14,7 @@ func BenchmarkSlice2String(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = string(byteData)
 	}
+
 }
 
 func BenchmarkSlice2String2(b *testing.B) {
@@ -23,4 +25,10 @@ func BenchmarkSlice2String2(b *testing.B) {
 
 func SliceByteToString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
+}
+
+func TestStringBuilder(t *testing.T) {
+	b := strings.Builder{}
+	b.Write([]byte{97, 97})
+	t.Log(b.String())
 }
