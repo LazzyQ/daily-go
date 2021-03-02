@@ -39,7 +39,9 @@ func TestSlice(t *testing.T) {
 func TestSliceStructChange(t *testing.T) {
 	students := make([]Student, 0, 2)
 
-	students = append(students, Student{Name: "x", Age: 1}, Student{Name: "y", Age: 2})
+	student1 := Student{Name: "x", Age: 1}
+	student2 := Student{Name: "y", Age: 2}
+	students = append(students, student1, student2)
 
 	// changeStudents(students)
 	// t.Log(students) // [{x 100} {y 200}]
@@ -55,4 +57,22 @@ func TestSliceStructChange(t *testing.T) {
 func changeStudents(students []Student) {
 	students[0].Age = 100
 	students[1].Age = 200
+}
+
+func TestSliceStructChange2(t *testing.T) {
+	students := make([]Student, 0, 2)
+
+	student1 := Student{Name: "x", Age: 1}
+	student2 := Student{Name: "y", Age: 2}
+	students = append(students, student1, student2)
+
+	t.Log(students)
+
+	// change student1
+	student1.Name = "xx"
+	t.Log(students)
+
+	// change student1
+	students[0].Name = "xx"
+	t.Log(students)
 }

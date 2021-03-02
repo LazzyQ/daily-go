@@ -12,7 +12,6 @@ type Compose struct {
 }
 
 func TestMapKey(t *testing.T) {
-
 	a := &Compose{Num: 1}
 	b := &Compose{Num: 1}
 
@@ -42,4 +41,13 @@ func MapWrite(m *sync.Map) {
 		m.Store("s", "s")
 		time.Sleep(time.Millisecond)
 	}
+}
+
+func TestMapLen(t *testing.T) {
+	m := make(map[string]struct{}, 10)
+	t.Logf("len(m): %d", len(m))
+
+	m["a"] = struct{}{}
+	m["b"] = struct{}{}
+	t.Logf("len(m): %d", len(m))
 }
