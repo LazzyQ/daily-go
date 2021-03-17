@@ -1,14 +1,9 @@
-package slice
+package basic
 
 import (
 	"testing"
 	"unsafe"
 )
-
-type Student struct {
-	Name string
-	Age  int
-}
 
 func TestSlice(t *testing.T) {
 	s := make([]byte, 128)

@@ -1,8 +1,9 @@
-package unicode
+package basic
 
 import (
-	"golang.org/x/text/unicode/norm"
 	"testing"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestNFKD(t *testing.T) {

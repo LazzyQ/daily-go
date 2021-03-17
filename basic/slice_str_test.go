@@ -1,6 +1,7 @@
-package str
+package basic
 
 import (
+	"sort"
 	"strings"
 	"testing"
 	"unsafe"
@@ -31,4 +32,20 @@ func TestStringBuilder(t *testing.T) {
 	b := strings.Builder{}
 	b.Write([]byte{97, 97})
 	t.Log(b.String())
+}
+
+func TestStringSort(t *testing.T) {
+	strs := make([]string, 0, 10)
+	strs = append(strs, "1", "2", "3", "4")
+
+	sort.Strings(strs)
+
+	for _, s := range strs {
+		t.Log(s)
+	}
+
+	t.Log(strs)
+	s := make([]string, 0, 20)
+	s = append(s, strs...)
+	t.Log(len(s))
 }

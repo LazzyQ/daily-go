@@ -1,33 +1,27 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
 
-type MyError string
+	"github.com/pkg/errors"
+)
 
-func (e *MyError) Error() string {
-	return string(*e)
+var TEST_ERROR = fmt.Errorf("这是一个错误")
+
+func stdError() error {
+	return fmt.Errorf("发生了错误: %w", TEST_ERROR)
 }
 
-var ErrBad = MyError("ErrBad")
-
-func bad() bool {
-	return false
-}
-
-func returnsError() error {
-	var p *MyError = nil
-	if bad() {
-		p = &ErrBad
-		return p
-	}
-	return nil // Will always return a non-nil error.
+func errorsError() error {
+	return errors.Wrapf(TEST_ERROR, "发生了错误")
 }
 
 func main() {
-	err := returnsError()
-	if err != nil {
-		fmt.Println("return non-nil error")
-		return
-	}
-	fmt.Println("return nil")
+	err := stdError()
+	fmt.Printf("stdError: %v\n", err)
+	fmt.Printf("stdError: %+v\n", err)
+
+	err = errorsError()
+	fmt.Printf("errorsError: %v\n", err)
+	fmt.Printf("errorsError: %+v\n", err)
 }

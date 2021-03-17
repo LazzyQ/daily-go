@@ -11,6 +11,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
 	github.com/micro/cli/v2 v2.1.2
 	github.com/micro/go-micro/v2 v2.4.0
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
 	github.com/smallnest/rpcx v0.0.0-20200924044220-f2cdd4dea15a
 	github.com/sony/gobreaker v0.4.1

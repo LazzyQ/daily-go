@@ -1,4 +1,4 @@
-package imap
+package basic
 
 import (
 	"fmt"
@@ -50,4 +50,18 @@ func TestMapLen(t *testing.T) {
 	m["a"] = struct{}{}
 	m["b"] = struct{}{}
 	t.Logf("len(m): %d", len(m))
+}
+
+func TestMapKey2(t *testing.T) {
+	m := make(map[string]string)
+	m["A"] = "a"
+	m["B"] = "b"
+
+	for k := range m {
+		m[k] = k
+	}
+
+	for k := range m {
+		t.Log(k)
+	}
 }
