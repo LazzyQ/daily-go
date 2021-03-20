@@ -71,3 +71,24 @@ func TestSliceStructChange2(t *testing.T) {
 	students[0].Name = "xx"
 	t.Log(students)
 }
+
+func TestSliceForChangeValue(t *testing.T) {
+
+	students := make([]Student, 0, 2)
+
+	student1 := Student{Name: "x", Age: 1, Parents: map[string]string{"mom": "momName1", "dady": "dadyName1"}}
+	student2 := Student{Name: "y", Age: 2, Parents: map[string]string{"mom": "momName2", "dady": "dadyName2"}}
+	students = append(students, student1, student2)
+
+	for index, student := range students {
+		t.Logf("%p\n", &student)
+
+		student.Name = student.Name + "changed"
+		student.Parents["mom"] = student.Parents["mom"] + "changed"
+		students[index] = student
+	}
+
+	for _, student := range students {
+		t.Logf("%+v", student)
+	}
+}

@@ -65,3 +65,20 @@ func TestMapKey2(t *testing.T) {
 		t.Log(k)
 	}
 }
+
+func TestMapGrow(t *testing.T) {
+	outer := make(map[string]map[string]struct{})
+	outer["a"] = make(map[string]struct{})
+
+	inner := outer["a"]
+	t.Log(len(inner))
+	inner["a"] = struct{}{}
+	inner["b"] = struct{}{}
+	inner["c"] = struct{}{}
+	inner["d"] = struct{}{}
+	inner["e"] = struct{}{}
+	inner["f"] = struct{}{}
+
+	inner = outer["a"]
+	t.Log(len(inner))
+}
