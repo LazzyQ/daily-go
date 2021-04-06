@@ -15,6 +15,7 @@ require (
 	github.com/prometheus/client_golang v1.7.1
 	github.com/smallnest/rpcx v0.0.0-20200924044220-f2cdd4dea15a
 	github.com/sony/gobreaker v0.4.1
+	github.com/tealeg/xlsx/v3 v3.2.3
 	github.com/urfave/cli/v2 v2.2.0
 	golang.org/x/text v0.3.3
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
@@ -23,4 +24,7 @@ require (
 )
 
 // 替换为v1.26.0版本的gRPC库
-replace google.golang.org/grpc => google.golang.org/grpc v1.26.0
+replace (
+	github.com/zengqiang96/dayli-go => /Users/zengqiang96/codespace/daily-go
+	google.golang.org/grpc => google.golang.org/grpc v1.26.0
+)

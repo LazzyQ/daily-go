@@ -1,10 +1,21 @@
 package basic
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"unsafe"
 )
+
+type Validate struct{}
+
+func (v *Validate) Hello() {
+	fmt.Println("Hello")
+}
+
+type T struct {
+	V *Validate
+}
 
 func TestBasePointer(t *testing.T) {
 	num := 1
@@ -75,4 +86,19 @@ func TestSliceSlice(t *testing.T) {
 	t.Logf("s array: %v, s1 array: %p",
 		*(*unsafe.Pointer)(unsafe.Pointer(uintptr(unsafe.Pointer(&s)))),
 		*(*unsafe.Pointer)(unsafe.Pointer(uintptr(unsafe.Pointer(&s1)))))
+}
+
+func TestNilPointer(t *testing.T) {
+	t1 := T{}
+	t1.V.Hello()
+}
+
+func TestXX(t *testing.T) {
+	var name = "before"
+	t.Log(name)
+	{
+		name := "after"
+		t.Log(name)
+	}
+	t.Log(name)
 }

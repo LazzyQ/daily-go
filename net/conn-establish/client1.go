@@ -5,7 +5,7 @@ import (
 	"net"
 )
 
-func main()  {
+func main() {
 	log.Println("begin dial...")
 	conn, err := net.Dial("tcp", ":8888")
 	if err != nil {
