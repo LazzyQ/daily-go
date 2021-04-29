@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-func main()  {
+func main() {
 	log.Println("begin dial...")
-	conn, err := net.DialTimeout("tcp", ":8888", 2 * time.Second)
+	conn, err := net.DialTimeout("tcp", ":8888", 2*time.Second)
 	if err != nil {
 		log.Println("dial error:", err)
 		return
