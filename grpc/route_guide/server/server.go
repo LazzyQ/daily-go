@@ -5,11 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	pb "github.com/zengqiang96/daily-go/grpc/route_guide/routeguide"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/testdata"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,6 +12,12 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/golang/protobuf/proto"
+	pb "github.com/zengqiang96/daily-go/grpc/route_guide/routeguide"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/testdata"
 )
 
 var (

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package routeguide;
+option go_package = "/routeguide";
 
 service RouteGuide {
     rpc GetFeature(Point) returns (Feature) {}
