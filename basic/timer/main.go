@@ -10,8 +10,7 @@ func main() {
 	ticker := time.NewTicker(2 * time.Second)
 
 	for t := range ticker.C {
-		// 每2s执行一次
-		fmt.Println("now: ", t)
+		fmt.Println(t)
 	}
 }
 

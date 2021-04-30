@@ -11,7 +11,13 @@ type User struct {
 	Name string
 }
 
+type PackageMethod func() error
+
 func (u User) GetAge() int {
+	return u.Age
+}
+
+func (u *User) get() int {
 	return u.Age
 }
 
@@ -48,27 +54,20 @@ func TestReflectField(t *testing.T) {
 func TestReflectMethod(t *testing.T) {
 	user := User{1, "小强"}
 
-	ut := reflect.TypeOf(user)
-	uv := reflect.ValueOf(user)
-	t.Log(ut, uv)
-
-	for i := 0; i < ut.NumMethod(); i++ {
-		m := ut.Method(i)
-		t.Logf("methd name: %s", m.Name)
-	}
-}
-
-func TestReflectMethod2(t *testing.T) {
-	user := User{1, "小强"}
-
 	ut := reflect.TypeOf(&user)
 	uv := reflect.ValueOf(&user)
 	t.Log(ut, uv)
 
+	t.Log(ut.PkgPath())
+
 	for i := 0; i < ut.NumMethod(); i++ {
 		m := ut.Method(i)
-		t.Logf("methd name: %s", m.Name)
+		t.Logf("method name: %s", m.Name)
+		t.Logf("method type: %s", m.Type)
+		t.Logf("method pkgPath: %s", m.PkgPath)
 	}
+
+	t.Log(uv.MethodByName("get"))
 }
 
 func TestReflect(t *testing.T) {
