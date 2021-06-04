@@ -82,6 +82,8 @@ func TestSliceSlice(t *testing.T) {
 	s = append(s, 0, 1, 2, 3, 4)
 
 	s1 := s[:3]
+	s2 := s[3:3]
+	t.Logf("s2: %v", s2)
 
 	t.Logf("s array: %v, s1 array: %p",
 		*(*unsafe.Pointer)(unsafe.Pointer(uintptr(unsafe.Pointer(&s)))),
