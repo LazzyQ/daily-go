@@ -20,9 +20,14 @@ require (
 	github.com/sony/gobreaker v0.4.1
 	github.com/tealeg/xlsx/v3 v3.2.3
 	github.com/urfave/cli/v2 v2.2.0
+<<<<<<< Updated upstream
 	github.com/xtaci/lossyconn v0.0.0-20200209145036-adba10fffc37 // indirect
 	golang.org/x/sys v0.0.0-20210304124612-50617c2ba197 // indirect
 	golang.org/x/text v0.3.5
+=======
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/text v0.3.3
+>>>>>>> Stashed changes
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/examples v0.0.0-20210429011145-91d8f0c916d7 // indirect
