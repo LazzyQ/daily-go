@@ -82,3 +82,82 @@ func TestMapGrow(t *testing.T) {
 	inner = outer["a"]
 	t.Log(len(inner))
 }
+
+func TestSliceMap(t *testing.T) {
+	sliceMap := []map[string]int{
+		{"1": 1},
+		{"2": 2},
+		{"3": 3},
+		{"4": 4},
+		{"5": 5},
+		{"6": 6},
+		{"7": 7},
+	}
+
+	sliceMapAnother := make([]map[string]int, 0, len(sliceMap))
+	for _, m := range sliceMap {
+		sliceMapAnother = append(sliceMapAnother, m)
+	}
+
+	t.Log(sliceMapAnother)
+}
+
+type MapValue struct {
+	Name  string
+	Age   int
+	Value StructValue
+}
+
+// 从输出可以看出，这样并不能修改到MapValue的值
+func TestUpdateMapValue(t *testing.T) {
+	m := map[int]MapValue{
+		1: {
+			Name: "zhangsan",
+			Age:  11,
+		},
+		2: {
+			Name: "lisi",
+			Age:  15,
+		},
+	}
+
+	for k, v := range m {
+		if k == 2 {
+			v.Name = "wangmazi"
+		}
+	}
+
+	t.Logf("%+v", m) // map[1:{Name:zhangsan Age:11} 2:{Name:lisi Age:15}]
+}
+
+func TestUpdateMapValue2(t *testing.T) {
+	m := map[int]*MapValue{
+		1: {
+			Name: "zhangsan",
+			Age:  11,
+			Value: StructValue{
+				IntValue:    11,
+				StringValue: "zhangsan",
+			},
+		},
+		2: {
+			Name: "lisi",
+			Age:  15,
+			Value: StructValue{
+				IntValue:    15,
+				StringValue: "lisi",
+			},
+		},
+	}
+
+	for k, v := range m {
+		if k == 2 {
+			v.Name = "wangmazi"
+			v.Value.StringValue = "wangmazi"
+		}
+	}
+
+	for k, v := range m {
+		t.Logf("k:%v, v:%v", k, v)
+	}
+}
